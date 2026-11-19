@@ -6,6 +6,8 @@ The Android app is packaged with Capacitor. Each push to `main` builds a debug-s
 
 The current upload queue is replaced whenever a new PDF selection is added. Downloaded reports are recorded in vehicle history saved in that browser on that device. Use **Export Excel** to download the complete history (`.xlsx`), including the vehicle number, prefix, date, and renamed filename. Browser history is not synced between devices; keep the Excel file as a backup.
 
+In the Android APK, renamed reports (as a ZIP) and the Excel history are saved directly to `Downloads/FASTag PDF Renamer` without a storage permission prompt on Android 10 and newer. Android 9 and earlier save them in the app's private Downloads folder without requesting storage permission.
+
 ## Run locally
 
 ```sh

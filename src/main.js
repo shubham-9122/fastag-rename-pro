@@ -1,9 +1,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.mjs?url";
 import JSZip from "jszip";
-import { Capacitor } from "@capacitor/core";
-import { Directory, Filesystem } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { createVehicleHistoryWorkbook } from "./historyExport.js";
 import { createReportFileName, formatReportDate } from "./reportName.js";
 import "./style.css";
@@ -29,6 +27,7 @@ const exportHistoryButton = document.querySelector("#export-history-button");
 const vehiclePattern = /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/i;
 const vehiclesPattern = /[A-Z]{2}\s?\d{2}\s?[A-Z]{1,3}\s?\d{4}/gi;
 const historyStorageKey = "fastag-renamer-history-v1";
+const SaveToDownloads = registerPlugin("SaveToDownloads");
 let reports = [];
 let history = loadHistory();
 let toastTimer;
@@ -97,24 +96,8 @@ async function deliverFile(blob, fileName, mimeType) {
     const base64 = String(dataUrl).split(",", 2)[1];
     if (!base64) throw new Error("Could not encode the generated download.");
 
-    await Filesystem.writeFile({
-      path: fileName,
-      data: base64,
-      directory: Directory.Cache,
-      recursive: true,
-    });
-    const file = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
-    try {
-      await Share.share({
-        title: fileName,
-        text: `Save or share ${fileName}`,
-        files: [file.uri],
-        dialogTitle: "Save or share file",
-      });
-    } finally {
-      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache });
-    }
-    return;
+    const result = await SaveToDownloads.save({ fileName, mimeType, data: base64 });
+    return result.location;
   }
 
   const url = URL.createObjectURL(new Blob([blob], { type: mimeType }));
@@ -123,6 +106,7 @@ async function deliverFile(blob, fileName, mimeType) {
   anchor.download = fileName;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return "";
 }
 
 async function addFiles(files) {
@@ -343,10 +327,10 @@ async function downloadReports() {
       console.error("Could not save vehicle history on this device.", error);
     }
 
-    await deliverFile(blob, "renamed-fastag-reports.zip", "application/zip");
+    const location = await deliverFile(blob, "renamed-fastag-reports.zip", "application/zip");
     showToast(historySaved
-      ? `${reports.length} renamed PDF${reports.length === 1 ? "" : "s"} downloaded and added to history.`
-      : "PDFs downloaded, but history could not be saved on this device.");
+      ? `${reports.length} renamed PDF${reports.length === 1 ? "" : "s"} downloaded${location ? ` to ${location}` : ""} and added to history.`
+      : `PDFs downloaded${location ? ` to ${location}` : ""}, but history could not be saved on this device.`);
   } catch (error) {
     console.error("Could not create the ZIP download.", error);
     showToast("Could not prepare the ZIP. Please try again.");
@@ -362,12 +346,12 @@ async function exportHistory() {
   exportHistoryButton.disabled = true;
   try {
     const blob = await createVehicleHistoryWorkbook(history);
-    await deliverFile(
+    const location = await deliverFile(
       blob,
       "fastag-vehicle-history.xlsx",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
-    showToast(`${history.length} vehicle history record${history.length === 1 ? "" : "s"} exported to Excel.`);
+    showToast(`${history.length} vehicle history record${history.length === 1 ? "" : "s"} exported to Excel${location ? ` at ${location}` : ""}.`);
   } catch (error) {
     console.error("Could not export vehicle history to Excel.", error);
     showToast("Could not export the Excel file. Please try again.");
