@@ -1,7 +1,6 @@
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.mjs?url";
 import JSZip from "jszip";
-import { Capacitor, registerPlugin } from "@capacitor/core";
 import { createVehicleHistoryWorkbook } from "./historyExport.js";
 import { createReportFileName, formatReportDate } from "./reportName.js";
 import "./style.css";
@@ -27,7 +26,6 @@ const exportHistoryButton = document.querySelector("#export-history-button");
 const vehiclePattern = /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/i;
 const vehiclesPattern = /[A-Z]{2}\s?\d{2}\s?[A-Z]{1,3}\s?\d{4}/gi;
 const historyStorageKey = "fastag-renamer-history-v1";
-const SaveToDownloads = registerPlugin("SaveToDownloads");
 let reports = [];
 let history = loadHistory();
 let toastTimer;
@@ -77,7 +75,7 @@ installButton.addEventListener("click", async () => {
   installButton.hidden = true;
 });
 
-if (!Capacitor.isNativePlatform() && "serviceWorker" in navigator && location.protocol !== "file:") {
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch((error) => {
       console.error("Could not register the offline app worker.", error);
@@ -85,28 +83,13 @@ if (!Capacitor.isNativePlatform() && "serviceWorker" in navigator && location.pr
   });
 }
 
-async function deliverFile(blob, fileName, mimeType) {
-  if (Capacitor.isNativePlatform()) {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = () => reject(reader.error ?? new Error("Could not read the generated download."));
-      reader.onload = () => resolve(reader.result);
-      reader.readAsDataURL(blob);
-    });
-    const base64 = String(dataUrl).split(",", 2)[1];
-    if (!base64) throw new Error("Could not encode the generated download.");
-
-    const result = await SaveToDownloads.save({ fileName, mimeType, data: base64 });
-    return result.location;
-  }
-
-  const url = URL.createObjectURL(new Blob([blob], { type: mimeType }));
+function deliverFile(blob, fileName) {
+  const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = fileName;
   anchor.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return "";
 }
 
 async function addFiles(files) {
@@ -327,10 +310,10 @@ async function downloadReports() {
       console.error("Could not save vehicle history on this device.", error);
     }
 
-    const location = await deliverFile(blob, "renamed-fastag-reports.zip", "application/zip");
+    deliverFile(blob, "renamed-fastag-reports.zip");
     showToast(historySaved
-      ? `${reports.length} renamed PDF${reports.length === 1 ? "" : "s"} downloaded${location ? ` to ${location}` : ""} and added to history.`
-      : `PDFs downloaded${location ? ` to ${location}` : ""}, but history could not be saved on this device.`);
+      ? `${reports.length} renamed PDF${reports.length === 1 ? "" : "s"} downloaded and added to history.`
+      : "PDFs downloaded, but history could not be saved on this device.");
   } catch (error) {
     console.error("Could not create the ZIP download.", error);
     showToast("Could not prepare the ZIP. Please try again.");
@@ -346,12 +329,8 @@ async function exportHistory() {
   exportHistoryButton.disabled = true;
   try {
     const blob = await createVehicleHistoryWorkbook(history);
-    const location = await deliverFile(
-      blob,
-      "fastag-vehicle-history.xlsx",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
-    showToast(`${history.length} vehicle history record${history.length === 1 ? "" : "s"} exported to Excel${location ? ` at ${location}` : ""}.`);
+    deliverFile(blob, "fastag-vehicle-history.xlsx");
+    showToast(`${history.length} vehicle history record${history.length === 1 ? "" : "s"} exported to Excel.`);
   } catch (error) {
     console.error("Could not export vehicle history to Excel.", error);
     showToast("Could not export the Excel file. Please try again.");

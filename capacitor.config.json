@@ -1,8 +1,0 @@
-{
-  "appId": "com.fastag.renamer",
-  "appName": "FASTag PDF Renamer",
-  "webDir": "dist",
-  "android": {
-    "allowMixedContent": false
-  }
-}
