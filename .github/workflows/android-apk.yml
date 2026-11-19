@@ -43,7 +43,7 @@ jobs:
         run: |
           npm run android:sync
           cd android
-          ./gradlew assembleDebug
+          bash gradlew assembleDebug
 
       - name: Publish APK release
         env:
