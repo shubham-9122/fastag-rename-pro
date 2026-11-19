@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10382e" />
+    <meta name="description" content="Rename FASTag PDF reports privately on your device." />
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <title>FASTag PDF Renamer</title>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="FASTag PDF Renamer home">
+          <span class="brand-mark" aria-hidden="true">F</span>
+          <span>FASTAG <span class="brand-light">TOOLS</span></span>
+        </a>
+        <button id="install-button" class="install-button" type="button" hidden>Install app</button>
+      </header>
+
+      <main>
+        <section class="intro">
+          <p class="eyebrow"><span class="status-dot"></span> PRIVATE · WORKS ON YOUR DEVICE</p>
+          <h1>Reports, <span>ready to file.</span></h1>
+          <p class="intro-copy">Give your FASTag PDFs a clear, consistent name in a few taps.</p>
+        </section>
+
+        <section class="panel setup-panel" aria-labelledby="details-title">
+          <div class="section-heading">
+            <span class="step-number">01</span>
+            <div>
+              <h2 id="details-title">Set the file details</h2>
+              <p>These details are used for every report.</p>
+            </div>
+          </div>
+          <div class="field-grid">
+            <label class="field">
+              <span>Name / prefix</span>
+              <input id="name-input" type="text" value="Shubham" autocomplete="name" maxlength="60" />
+            </label>
+            <label class="field">
+              <span>Report date</span>
+              <input id="date-input" type="date" />
+            </label>
+          </div>
+          <p class="format-hint">Example: <strong id="example-name">Shubham_BR10AL3536_fastag_report_18th Nov26.pdf</strong></p>
+        </section>
+
+        <section class="panel upload-panel" aria-labelledby="upload-title">
+          <div class="section-heading">
+            <span class="step-number">02</span>
+            <div>
+              <h2 id="upload-title">Add your PDF reports</h2>
+              <p>Select multiple PDFs. A new selection replaces the previous batch.</p>
+            </div>
+          </div>
+          <label id="drop-zone" class="drop-zone" for="file-input">
+            <input id="file-input" type="file" accept=".pdf,application/pdf" multiple />
+            <span class="upload-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 15.5v3A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="drop-title">Tap to choose PDF files</span>
+            <span class="drop-subtitle">or drop them here · PDF only</span>
+          </label>
+          <p class="privacy-note"><span aria-hidden="true">🔒</span> Vehicle numbers are kept as they are; PDFs stay on this device.</p>
+        </section>
+
+        <section id="files-section" class="files-section" aria-live="polite" hidden>
+          <div class="files-heading">
+            <div>
+              <p class="eyebrow">YOUR QUEUE</p>
+              <h2><span id="file-count">0</span> reports</h2>
+            </div>
+            <button id="clear-button" class="text-button" type="button">Clear all</button>
+          </div>
+          <div id="file-list" class="file-list"></div>
+          <div class="download-area">
+            <button id="download-button" class="download-button" type="button" disabled>
+              <span>Download renamed PDFs</span><span class="download-arrow" aria-hidden="true">↓</span>
+            </button>
+            <p id="download-hint" class="download-hint">Files will be bundled into one ZIP.</p>
+          </div>
+        </section>
+
+        <section class="panel history-panel" aria-labelledby="history-title">
+          <div class="history-heading">
+            <div class="section-heading history-section-heading">
+              <span class="step-number">03</span>
+              <div>
+                <h2 id="history-title">Vehicle history</h2>
+                <p>Saved on this device when you download renamed reports.</p>
+              </div>
+            </div>
+            <button id="export-history-button" class="export-button" type="button" disabled>
+              <span aria-hidden="true">↓</span> Export Excel
+            </button>
+          </div>
+          <p id="history-empty" class="history-empty">Your saved vehicle and prefix records will appear here.</p>
+          <div id="history-list" class="history-list"></div>
+        </section>
+      </main>
+      <footer>
+        <span>FASTAG TOOLS</span><span>Made for simple, private filing.</span>
+      </footer>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
