@@ -10,7 +10,7 @@ test("exports every vehicle and prefix as a valid Excel workbook", async () => {
       prefix: "Shubham & Company",
       reportDate: "18th Nov26",
       originalFile: "original.pdf",
-      renamedFile: "Shubham_BR10AL3536_fastag_report_18th Nov26.pdf",
+      renamedFile: "Magma_BR10AL3536_FASTag_Report_18th Nov26.pdf",
       recordedAt: "2026-11-18T12:00:00.000Z",
     },
     {
@@ -18,7 +18,7 @@ test("exports every vehicle and prefix as a valid Excel workbook", async () => {
       prefix: "Office",
       reportDate: "19th Nov26",
       originalFile: "report.pdf",
-      renamedFile: "Office_MH01AB1234_fastag_report_19th Nov26.pdf",
+      renamedFile: "Office_MH01AB1234_FASTag_Report_19th Nov26.pdf",
       recordedAt: "2026-11-19T12:00:00.000Z",
     },
   ];
@@ -33,6 +33,6 @@ test("exports every vehicle and prefix as a valid Excel workbook", async () => {
   assert.match(worksheet, /Shubham &amp; Company/);
   assert.match(worksheet, /BR10AL3536/);
   assert.match(worksheet, /MH01AB1234/);
-  assert.match(worksheet, /Office_MH01AB1234_fastag_report_19th Nov26\.pdf/);
+  assert.match(worksheet, /Office_MH01AB1234_FASTag_Report_19th Nov26\.pdf/);
   assert.match(worksheet, /<autoFilter ref="A1:F3"\/>/);
 });

@@ -1,7 +1,11 @@
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.mjs?url";
 import JSZip from "jszip";
+import { Capacitor } from "@capacitor/core";
+import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { createVehicleHistoryWorkbook } from "./historyExport.js";
+import { createReportFileName, formatReportDate } from "./reportName.js";
 import "./style.css";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -24,7 +28,6 @@ const exportHistoryButton = document.querySelector("#export-history-button");
 
 const vehiclePattern = /^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/i;
 const vehiclesPattern = /[A-Z]{2}\s?\d{2}\s?[A-Z]{1,3}\s?\d{4}/gi;
-const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const historyStorageKey = "fastag-renamer-history-v1";
 let reports = [];
 let history = loadHistory();
@@ -75,12 +78,51 @@ installButton.addEventListener("click", async () => {
   installButton.hidden = true;
 });
 
-if ("serviceWorker" in navigator && location.protocol !== "file:") {
+if (!Capacitor.isNativePlatform() && "serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch((error) => {
       console.error("Could not register the offline app worker.", error);
     });
   });
+}
+
+async function deliverFile(blob, fileName, mimeType) {
+  if (Capacitor.isNativePlatform()) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error ?? new Error("Could not read the generated download."));
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+    const base64 = String(dataUrl).split(",", 2)[1];
+    if (!base64) throw new Error("Could not encode the generated download.");
+
+    await Filesystem.writeFile({
+      path: fileName,
+      data: base64,
+      directory: Directory.Cache,
+      recursive: true,
+    });
+    const file = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
+    try {
+      await Share.share({
+        title: fileName,
+        text: `Save or share ${fileName}`,
+        files: [file.uri],
+        dialogTitle: "Save or share file",
+      });
+    } finally {
+      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache });
+    }
+    return;
+  }
+
+  const url = URL.createObjectURL(new Blob([blob], { type: mimeType }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function addFiles(files) {
@@ -146,7 +188,7 @@ function render() {
   const date = parseDateInput(dateInput.value);
   const prefix = safeNamePart(nameInput.value);
   const previewVehicle = "BR10AL3536";
-  exampleName.textContent = `${prefix || "Name"}_${previewVehicle}_fastag_report_${date ? formatDate(date) : "DD MonYY"}.pdf`;
+  exampleName.textContent = `${prefix || "Name"}_${previewVehicle}_FASTag_Report_${date ? formatDate(date) : "DD MonYY"}.pdf`;
 
   filesSection.hidden = reports.length === 0;
   fileCount.textContent = String(reports.length);
@@ -301,12 +343,7 @@ async function downloadReports() {
       console.error("Could not save vehicle history on this device.", error);
     }
 
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "renamed-fastag-reports.zip";
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await deliverFile(blob, "renamed-fastag-reports.zip", "application/zip");
     showToast(historySaved
       ? `${reports.length} renamed PDF${reports.length === 1 ? "" : "s"} downloaded and added to history.`
       : "PDFs downloaded, but history could not be saved on this device.");
@@ -325,12 +362,11 @@ async function exportHistory() {
   exportHistoryButton.disabled = true;
   try {
     const blob = await createVehicleHistoryWorkbook(history);
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "fastag-vehicle-history.xlsx";
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await deliverFile(
+      blob,
+      "fastag-vehicle-history.xlsx",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
     showToast(`${history.length} vehicle history record${history.length === 1 ? "" : "s"} exported to Excel.`);
   } catch (error) {
     console.error("Could not export vehicle history to Excel.", error);
@@ -375,13 +411,12 @@ function reportOutputName(report) {
   const date = parseDateInput(dateInput.value);
   if (!prefix || !date || !vehiclePattern.test(report.vehicle)) return null;
 
-  const base = `${prefix}_${normalizeVehicle(report.vehicle)}_fastag_report_${formatDate(date)}`;
+  const base = createReportFileName(prefix, report.vehicle, date);
   const reportIndex = reports.findIndex((item) => item.id === report.id);
   const duplicatesBefore = reports.slice(0, reportIndex).filter((item) => (
-    `${prefix}_${normalizeVehicle(item.vehicle)}_fastag_report_${formatDate(date)}` === base
+    createReportFileName(prefix, item.vehicle, date) === base
   )).length;
-  const suffix = duplicatesBefore ? `_${duplicatesBefore + 1}` : "";
-  return `${base}${suffix}.pdf`;
+  return `${createReportFileName(prefix, report.vehicle, date, duplicatesBefore)}.pdf`;
 }
 
 function localDateValue(date) {
@@ -398,9 +433,7 @@ function parseDateInput(value) {
 }
 
 function formatDate(date) {
-  const day = date.getDate();
-  const suffix = day % 100 >= 11 && day % 100 <= 13 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[day % 10] ?? "th");
-  return `${day}${suffix} ${monthNames[date.getMonth()]}${String(date.getFullYear()).slice(-2)}`;
+  return formatReportDate(date);
 }
 
 function showToast(message) {
